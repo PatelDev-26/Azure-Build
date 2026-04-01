@@ -1,0 +1,308 @@
+build this entirely on **Azure** is actually one of the cleanest ways to hit all the coursework requirements *and* demonstrate strong cloud architecture skills. 
+
+Here’s a **full Azure-specific plan** tailored to your assignment + scalability + high-conversion design.
+
+---
+
+# ☁️ 1. AZURE ARCHITECTURE OVERVIEW
+
+### 🧩 Core Services You’ll Use
+
+| Layer          | Azure Service              |
+| -------------- | -------------------------- |
+| Frontend       | Azure Static Web Apps      |
+| Backend API    | Azure Functions            |
+| Database       | Azure Cosmos DB            |
+| Image Storage  | Azure Blob Storage         |
+| Authentication | Azure Active Directory B2C |
+| CDN + DNS      | Azure Front Door           |
+
+---
+
+# 🏗️ 2. FINAL SYSTEM DESIGN (How everything connects)
+
+```
+User Browser
+     ↓
+Azure Static Web Apps (Frontend)
+     ↓ (REST API calls)
+Azure Functions (Backend API)
+     ↓
+Cosmos DB (metadata + users)
+     ↓
+Blob Storage (images)
+```
+
+Optional:
+
+* Azure Front Door → improves performance + routing
+
+---
+
+# 🎯 3. FEATURE IMPLEMENTATION (Mapped to Azure)
+
+## 👤 Creator Flow
+
+1. Upload image → stored in Blob Storage
+2. Metadata → saved in Cosmos DB
+3. API handles validation
+
+## 👥 Consumer Flow
+
+1. Fetch feed → Cosmos DB
+2. Load images → Blob Storage (via CDN)
+3. Comment + rate → stored in DB
+
+---
+
+# 🧱 4. DATABASE DESIGN (Cosmos DB)
+
+Use **Core (SQL API)**.
+
+### Collections (Containers)
+
+#### Users
+
+```json
+{
+  "id": "user123",
+  "role": "creator",
+  "username": "john",
+  "email": "john@email.com"
+}
+```
+
+#### Images
+
+```json
+{
+  "id": "img123",
+  "url": "blob-url",
+  "title": "Sunset",
+  "caption": "Nice view",
+  "location": "London",
+  "people": ["Anna"],
+  "createdBy": "user123",
+  "createdAt": "timestamp"
+}
+```
+
+#### Comments
+
+```json
+{
+  "id": "c1",
+  "imageId": "img123",
+  "userId": "user456",
+  "text": "Amazing!"
+}
+```
+
+#### Ratings
+
+```json
+{
+  "imageId": "img123",
+  "userId": "user456",
+  "rating": 4
+}
+```
+
+---
+
+# 🔌 5. BACKEND (Azure Functions)
+
+Use **HTTP-triggered functions**.
+
+### API Endpoints
+
+| Function                  | Method | Purpose       |
+| ------------------------- | ------ | ------------- |
+| `/api/images`             | GET    | Get feed      |
+| `/api/images/{id}`        | GET    | Image details |
+| `/api/images`             | POST   | Upload image  |
+| `/api/search`             | GET    | Search images |
+| `/api/comments`           | POST   | Add comment   |
+| `/api/comments/{imageId}` | GET    | Get comments  |
+| `/api/rate`               | POST   | Rate image    |
+
+---
+
+# 🖼️ 6. IMAGE HANDLING (Blob Storage)
+
+### Setup
+
+* Create **container**: `images`
+* Set access: public (or SAS tokens)
+
+### Upload Flow
+
+1. Frontend → API
+2. API → Blob Storage
+3. Save URL in Cosmos DB
+
+### Optimization (important for marks)
+
+* Store:
+
+  * Original image
+  * Thumbnail version
+* Use:
+
+  * Azure Functions for resizing
+
+---
+
+# 🎨 7. FRONTEND (Azure Static Web Apps)
+
+### Tech Options
+
+* Simple: HTML + CSS + JS
+* Better: React (recommended)
+
+### Pages
+
+* Home Feed
+* Image Detail
+* Creator Dashboard
+* Login/Register
+
+---
+
+# 🔐 8. AUTHENTICATION (Highly Recommended)
+
+Use:
+👉 Azure Active Directory B2C
+
+### Roles
+
+* Creator
+* Consumer
+
+### Rules
+
+* Creators → upload only
+* Consumers → view/comment/rate
+
+---
+
+# ⚡ 9. SCALABILITY (IMPORTANT FOR HIGH MARKS)
+
+### Built-in Azure scaling
+
+* Azure Functions → auto-scale
+* Cosmos DB → auto-scale RU/s
+* Blob Storage → unlimited scaling
+
+### Add:
+
+* Caching via Front Door
+* CDN for images
+
+---
+
+# 🚀 10. PERFORMANCE OPTIMIZATION
+
+* Use thumbnails (critical)
+* Lazy loading images
+* CDN (Front Door)
+* Reduce API calls (batch requests)
+
+---
+
+# 🧪 11. TESTING PLAN (Task 2)
+
+### Functional
+
+* Upload works
+* Search works
+* Comments persist
+
+### Performance
+
+* Test multiple users
+* Measure response times
+
+### Security
+
+* Role validation
+* Input sanitization
+
+---
+
+# 🚀 12. DEPLOYMENT PLAN (Step-by-step)
+
+### Step 1: Create Resources
+
+* Static Web App
+* Function App
+* Cosmos DB
+* Storage Account
+
+### Step 2: Deploy Backend
+
+* Write Azure Functions
+* Connect to DB + Storage
+
+### Step 3: Deploy Frontend
+
+* Push to GitHub
+* Connect to Static Web Apps
+
+### Step 4: Configure Auth
+
+* Setup Azure AD B2C
+* Protect routes
+
+### Step 5: Test Everything
+
+---
+
+# 💰 13. FREE TIER STRATEGY
+
+You can stay within free limits:
+
+| Service         | Free Tier                |
+| --------------- | ------------------------ |
+| Static Web Apps | Free                     |
+| Azure Functions | 1M requests/month        |
+| Cosmos DB       | Free tier (limited RU/s) |
+| Blob Storage    | Small free usage         |
+| AD B2C          | Free for small users     |
+
+---
+
+# 🧠 14. HIGH-CONVERSION UX (Instagram-like)
+
+To stand out:
+
+### Feed Design
+
+* Infinite scroll
+* Big images
+* Minimal text
+
+### Interaction
+
+* Double-click like
+* Quick comment
+
+### Layout
+
+* Mobile-first design
+* Sticky navbar
+
+---
+
+# 🏆 15. WHAT GETS YOU TOP MARKS
+
+* Proper cloud-native architecture
+* Separation of frontend/backend
+* Scalable services (Functions + Cosmos)
+* Media storage in Blob
+* Authentication + roles
+* Performance optimization
+* Clear documentation
+
+---
+ 

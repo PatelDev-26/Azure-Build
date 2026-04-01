@@ -1,22 +1,30 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: PhotoShare API - Instagram-like photo sharing platform
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: images
+    description: Image operations
+  - name: comments
+    description: Comment operations
+  - name: ratings
+    description: Rating operations
+  - name: users
+    description: User operations
+  - name: feed
+    description: Feed and discovery operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +32,284 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /images:
+    get:
+      operationId: getImages
+      tags: [images]
+      summary: Get all images (feed)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: creatorId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of images
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImagesResponse"
+    post:
+      operationId: createImage
+      tags: [images]
+      summary: Upload a new image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateImageBody"
+      responses:
+        "201":
+          description: Image created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Image"
+
+  /images/{id}:
+    get:
+      operationId: getImage
+      tags: [images]
+      summary: Get image by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Image details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteImage
+      tags: [images]
+      summary: Delete an image
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Image deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /search:
+    get:
+      operationId: searchImages
+      tags: [images]
+      summary: Search images
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImagesResponse"
+
+  /comments:
+    post:
+      operationId: createComment
+      tags: [comments]
+      summary: Add a comment to an image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentBody"
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+
+  /comments/{imageId}:
+    get:
+      operationId: getComments
+      tags: [comments]
+      summary: Get comments for an image
+      parameters:
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+
+  /ratings:
+    post:
+      operationId: rateImage
+      tags: [ratings]
+      summary: Rate an image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateImageBody"
+      responses:
+        "200":
+          description: Rating saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /ratings/{imageId}:
+    get:
+      operationId: getImageRating
+      tags: [ratings]
+      summary: Get average rating for an image
+      parameters:
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Rating info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingInfo"
+
+  /users:
+    get:
+      operationId: getUsers
+      tags: [users]
+      summary: Get all users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create or login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "200":
+          description: User found or created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /feed/stats:
+    get:
+      operationId: getFeedStats
+      tags: [feed]
+      summary: Get feed stats - top rated, most commented, recent activity
+      responses:
+        "200":
+          description: Feed stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedStats"
+
+  /feed/trending:
+    get:
+      operationId: getTrendingImages
+      tags: [feed]
+      summary: Get trending images (highest rated + most commented)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 6
+      responses:
+        "200":
+          description: Trending images
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImagesResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +317,260 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required: [success]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [creator, consumer]
+        avatarUrl:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required: [id, username, displayName, role, createdAt]
+
+    CreateUserBody:
+      type: object
+      properties:
+        username:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [creator, consumer]
+        avatarUrl:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+      required: [username, displayName, role]
+
+    Image:
+      type: object
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+        title:
+          type: string
+        caption:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        creatorId:
+          type: integer
+        creatorUsername:
+          type: string
+        creatorDisplayName:
+          type: string
+        averageRating:
+          type: number
+          nullable: true
+        ratingCount:
+          type: integer
+        commentCount:
+          type: integer
+        createdAt:
+          type: string
+      required: [id, url, title, creatorId, creatorUsername, creatorDisplayName, ratingCount, commentCount, createdAt, tags]
+
+    ImageDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+        title:
+          type: string
+        caption:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        creatorId:
+          type: integer
+        creatorUsername:
+          type: string
+        creatorDisplayName:
+          type: string
+        creatorAvatarUrl:
+          type: string
+          nullable: true
+        averageRating:
+          type: number
+          nullable: true
+        ratingCount:
+          type: integer
+        commentCount:
+          type: integer
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+        createdAt:
+          type: string
+      required: [id, url, title, creatorId, creatorUsername, creatorDisplayName, ratingCount, commentCount, comments, createdAt, tags]
+
+    ImagesResponse:
+      type: object
+      properties:
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/Image"
+        total:
+          type: integer
+      required: [images, total]
+
+    CreateImageBody:
+      type: object
+      properties:
+        url:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+        title:
+          type: string
+        caption:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        creatorId:
+          type: integer
+      required: [url, title, creatorId]
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        imageId:
+          type: integer
+        userId:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        text:
+          type: string
+        createdAt:
+          type: string
+      required: [id, imageId, userId, username, displayName, text, createdAt]
+
+    CreateCommentBody:
+      type: object
+      properties:
+        imageId:
+          type: integer
+        userId:
+          type: integer
+        text:
+          type: string
+      required: [imageId, userId, text]
+
+    RateImageBody:
+      type: object
+      properties:
+        imageId:
+          type: integer
+        userId:
+          type: integer
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+      required: [imageId, userId, rating]
+
+    RatingInfo:
+      type: object
+      properties:
+        imageId:
+          type: integer
+        averageRating:
+          type: number
+          nullable: true
+        ratingCount:
+          type: integer
+        userRating:
+          type: integer
+          nullable: true
+      required: [imageId, ratingCount]
+
+    FeedStats:
+      type: object
+      properties:
+        totalImages:
+          type: integer
+        totalUsers:
+          type: integer
+        totalComments:
+          type: integer
+        totalRatings:
+          type: integer
+        topRatedImage:
+          $ref: "#/components/schemas/Image"
+          nullable: true
+        mostCommentedImage:
+          $ref: "#/components/schemas/Image"
+          nullable: true
+      required: [totalImages, totalUsers, totalComments, totalRatings]
