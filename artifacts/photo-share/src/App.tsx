@@ -3,19 +3,19 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-// Context
 import { AuthProvider } from "@/hooks/use-auth";
-
-// Components
 import { Layout } from "@/components/layout";
 
-// Pages
 import Home from "@/pages/home";
 import Search from "@/pages/search";
 import ImageDetail from "@/pages/image-detail";
 import Upload from "@/pages/upload";
 import CreatorProfile from "@/pages/creator-profile";
 import Users from "@/pages/users";
+import Login from "@/pages/login";
+import Register from "@/pages/register";
+import ForgotPassword from "@/pages/forgot-password";
+import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -32,6 +32,10 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/login" component={Login} />
+        <Route path="/register" component={Register} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/profile" component={Profile} />
         <Route path="/search" component={Search} />
         <Route path="/image/:id" component={ImageDetail} />
         <Route path="/upload" component={Upload} />
@@ -51,7 +55,7 @@ function App() {
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>
-          <Toaster position="bottom-right" toastOptions={{ className: 'font-sans' }} />
+          <Toaster position="bottom-right" toastOptions={{ className: "font-sans" }} />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

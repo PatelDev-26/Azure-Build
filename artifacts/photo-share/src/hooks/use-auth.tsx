@@ -1,43 +1,64 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { User } from "@workspace/api-client-react";
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  displayName: string;
+  email: string | null;
+  age: number | null;
+  role: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  createdAt: string;
+}
 
 interface AuthContextType {
-  user: User | null;
-  login: (user: User) => void;
+  user: AuthUser | null;
+  login: (user: AuthUser) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isInitializing: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const API = "/api";
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  useEffect(() => {
-    const stored = localStorage.getItem("photoshare_user");
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch (e) {
-        console.error("Failed to parse stored user", e);
-      }
+  const fetchMe = async (): Promise<AuthUser | null> => {
+    try {
+      const res = await fetch(`${API}/auth/me`, { credentials: "include" });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
     }
-    setIsInitializing(false);
-  }, []);
-
-  const login = (u: User) => {
-    localStorage.setItem("photoshare_user", JSON.stringify(u));
-    setUser(u);
   };
 
-  const logout = () => {
-    localStorage.removeItem("photoshare_user");
+  useEffect(() => {
+    fetchMe().then((u) => {
+      setUser(u);
+      setIsInitializing(false);
+    });
+  }, []);
+
+  const login = (u: AuthUser) => setUser(u);
+
+  const logout = async () => {
+    await fetch(`${API}/auth/logout`, { method: "POST", credentials: "include" });
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    const u = await fetchMe();
+    setUser(u);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isInitializing }}>
+    <AuthContext.Provider value={{ user, login, logout, refreshUser, isInitializing }}>
       {children}
     </AuthContext.Provider>
   );
