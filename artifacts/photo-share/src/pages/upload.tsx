@@ -1,30 +1,45 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useCreateImage } from "@workspace/api-client-react";
+import { useUpload } from "@workspace/object-storage-web";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload as UploadIcon, Image as ImageIcon, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload as UploadIcon, Image as ImageIcon, AlertCircle, CloudUpload, X, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export default function Upload() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const createImage = useCreateImage();
-  const [previewError, setPreviewError] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadedObjectPath, setUploadedObjectPath] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [formData, setFormData] = useState({
-    url: "",
     title: "",
     caption: "",
     location: "",
     tags: ""
   });
 
-  // Protect route
+  const { uploadFile, isUploading, progress } = useUpload({
+    onSuccess: (response) => {
+      setUploadedObjectPath(response.objectPath);
+      toast.success("Image uploaded — now fill in the details and publish.");
+    },
+    onError: (err) => {
+      toast.error(`Upload failed: ${err.message}`);
+    }
+  });
+
   if (!user || user.role !== "creator") {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -35,17 +50,70 @@ export default function Upload() {
     );
   }
 
+  const handleFileSelect = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file (JPG, PNG, GIF, WEBP, etc.)");
+      return;
+    }
+    setSelectedFile(file);
+    setUploadedObjectPath(null);
+
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+
+    if (!formData.title) {
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+      setFormData(prev => ({
+        ...prev,
+        title: nameWithoutExt.charAt(0).toUpperCase() + nameWithoutExt.slice(1)
+      }));
+    }
+
+    await uploadFile(file);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileSelect(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileSelect(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setUploadedObjectPath(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    if (e.target.name === 'url') setPreviewError(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.url || !formData.title) {
-      toast.error("Image URL and Title are required");
+    if (!uploadedObjectPath) {
+      toast.error("Please upload an image from your device first.");
       return;
     }
+    if (!formData.title) {
+      toast.error("Title is required");
+      return;
+    }
+
+    const imageUrl = `/api/storage${uploadedObjectPath}`;
 
     const tagsArray = formData.tags
       .split(",")
@@ -55,7 +123,8 @@ export default function Upload() {
     createImage.mutate(
       {
         data: {
-          url: formData.url,
+          url: imageUrl,
+          thumbnailUrl: imageUrl,
           title: formData.title,
           caption: formData.caption || undefined,
           location: formData.location || undefined,
@@ -65,11 +134,11 @@ export default function Upload() {
       },
       {
         onSuccess: (newImage) => {
-          toast.success("Image added to gallery!");
+          toast.success("Published to your gallery!");
           setLocation(`/image/${newImage.id}`);
         },
         onError: () => {
-          toast.error("Failed to upload image. Please check the details.");
+          toast.error("Failed to publish. Please try again.");
         }
       }
     );
@@ -77,7 +146,7 @@ export default function Upload() {
 
   return (
     <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in">
-      
+
       <Card className="bg-card border-border/40 shadow-xl">
         <CardHeader className="space-y-1">
           <CardTitle className="text-3xl font-serif text-primary flex items-center gap-2">
@@ -85,20 +154,90 @@ export default function Upload() {
             Exhibit Work
           </CardTitle>
           <CardDescription className="text-base">
-            Add a new piece to your gallery portfolio.
+            Upload a photo from your device to add it to your gallery.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+
+            {/* File Upload Zone */}
             <div className="space-y-2">
-              <Label htmlFor="url" className="text-foreground/80">Image URL <span className="text-destructive">*</span></Label>
-              <Input
-                id="url"
-                name="url"
-                value={formData.url}
-                onChange={handleChange}
-                placeholder="https://example.com/image.jpg"
-                className="bg-background/50"
+              <Label className="text-foreground/80">Image File <span className="text-destructive">*</span></Label>
+
+              {!selectedFile ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  className={cn(
+                    "relative border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all duration-200",
+                    "flex flex-col items-center justify-center gap-3 text-center",
+                    isDragging
+                      ? "border-primary bg-primary/10 scale-[1.01]"
+                      : "border-border/50 bg-background/30 hover:border-primary/60 hover:bg-primary/5"
+                  )}
+                >
+                  <CloudUpload className={cn("w-10 h-10 transition-colors", isDragging ? "text-primary" : "text-muted-foreground")} />
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {isDragging ? "Drop your image here" : "Choose a photo from your device"}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">or drag and drop it here</p>
+                    <p className="text-xs text-muted-foreground mt-1">JPG, PNG, WEBP, GIF supported</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="mt-1 pointer-events-none">
+                    Browse Files
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3 bg-background/50 rounded-xl border border-border/50">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                    {previewUrl && (
+                      <img src={previewUrl} alt="Selected" className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                    {isUploading && (
+                      <div className="mt-1">
+                        <div className="h-1 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full transition-all duration-300"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">Uploading... {progress}%</p>
+                      </div>
+                    )}
+                    {uploadedObjectPath && !isUploading && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <CheckCircle2 className="w-3 h-3 text-green-500" />
+                        <p className="text-xs text-green-500">Upload complete</p>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearFile}
+                    className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex-shrink-0"
+                    disabled={isUploading}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileInputChange}
+                className="hidden"
+                disabled={isUploading}
               />
             </div>
 
@@ -122,7 +261,7 @@ export default function Upload() {
                 value={formData.caption}
                 onChange={handleChange}
                 placeholder="The story behind this shot..."
-                className="bg-background/50 min-h-[120px] resize-none"
+                className="bg-background/50 min-h-[100px] resize-none"
               />
             </div>
 
@@ -145,46 +284,46 @@ export default function Upload() {
                   name="tags"
                   value={formData.tags}
                   onChange={handleChange}
-                  placeholder="street, night, film (comma separated)"
+                  placeholder="street, night, film"
                   className="bg-background/50"
                 />
               </div>
             </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full h-12 text-lg font-medium"
-              disabled={createImage.isPending || !formData.url || !formData.title}
+              disabled={createImage.isPending || isUploading || !uploadedObjectPath || !formData.title}
             >
-              {createImage.isPending ? "Adding to Gallery..." : "Publish to Gallery"}
+              {createImage.isPending ? "Publishing..." : isUploading ? "Uploading..." : "Publish to Gallery"}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      {/* Preview Section */}
+      {/* Preview Panel */}
       <div className="sticky top-24 space-y-4">
         <h3 className="font-serif text-xl text-foreground/80 pl-2 border-l-2 border-primary">Preview</h3>
         <div className="rounded-xl border border-border/50 bg-secondary/30 overflow-hidden aspect-[4/3] relative flex items-center justify-center">
-          {formData.url && !previewError ? (
-            <img 
-              src={formData.url} 
-              alt="Preview" 
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt="Preview"
               className="w-full h-full object-cover"
-              onError={() => setPreviewError(true)}
             />
           ) : (
             <div className="text-center text-muted-foreground flex flex-col items-center">
               <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
-              <p>{previewError ? "Invalid Image URL" : "Image preview will appear here"}</p>
+              <p>Your image will appear here</p>
             </div>
           )}
         </div>
-        
+
         {formData.title && (
           <div className="bg-card p-4 rounded-xl border border-border/30">
             <h4 className="font-serif text-lg">{formData.title}</h4>
             {formData.location && <p className="text-sm text-muted-foreground mt-1">{formData.location}</p>}
+            {formData.caption && <p className="text-sm text-foreground/70 mt-2 line-clamp-3">{formData.caption}</p>}
           </div>
         )}
       </div>

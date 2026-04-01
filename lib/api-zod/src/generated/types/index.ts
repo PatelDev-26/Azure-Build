@@ -23,5 +23,7 @@ export * from "./rateImageBody";
 export * from "./ratingInfo";
 export * from "./searchImagesParams";
 export * from "./successResponse";
+export * from "./uploadUrlRequest";
+export * from "./uploadUrlResponse";
 export * from "./user";
 export * from "./userRole";

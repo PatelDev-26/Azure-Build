@@ -74,6 +74,9 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
+  # Pin React to the workspace version so Uppy v5 (which declares react>=19 peer) doesn't pull a duplicate
+  react: "19.1.0"
+  react-dom: "19.1.0"
   # replit uses linux-x64 only, we can exclude all other platforms
   "esbuild>@esbuild/darwin-arm64": "-"
   "esbuild>@esbuild/darwin-x64": "-"
