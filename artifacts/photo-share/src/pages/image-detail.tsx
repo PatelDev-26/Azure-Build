@@ -28,6 +28,7 @@ export default function ImageDetail() {
   
   const [commentText, setCommentText] = useState("");
   const [isHoveringImage, setIsHoveringImage] = useState(false);
+  const [localUserRating, setLocalUserRating] = useState(0);
 
   const { data: image, isLoading: isImageLoading, isError: isImageError } = useGetImage(imageId, {
     query: { enabled: !!imageId, queryKey: getGetImageQueryKey(imageId) }
@@ -73,7 +74,7 @@ export default function ImageDetail() {
       toast.error("You must be logged in to rate images");
       return;
     }
-
+    setLocalUserRating(rating);
     rateImage.mutate(
       { data: { imageId, userId: user.id, rating } },
       {
@@ -83,6 +84,7 @@ export default function ImageDetail() {
         },
         onError: () => {
           toast.error("Failed to submit rating");
+          setLocalUserRating(0);
         }
       }
     );
@@ -147,7 +149,7 @@ export default function ImageDetail() {
                 <div className="flex flex-col items-end">
                   <span className="text-xs text-muted-foreground uppercase tracking-wider">Your Rating</span>
                   <div className="mt-1">
-                    <RatingStars rating={0} onRate={handleRate} size="lg" />
+                    <RatingStars rating={localUserRating} onRate={handleRate} size="lg" />
                   </div>
                 </div>
               )}

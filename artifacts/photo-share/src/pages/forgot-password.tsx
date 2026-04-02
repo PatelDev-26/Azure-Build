@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, Loader2, Mail, ShieldCheck, AlertTriangle } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, Loader2, Mail, ShieldCheck, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 type Step = "email" | "otp" | "password" | "done";
@@ -20,6 +20,7 @@ export default function ForgotPassword() {
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,8 +69,9 @@ export default function ForgotPassword() {
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPassword || newPassword.length < 6) { toast.error("Password must be at least 6 characters."); return; }
-    if (newPassword !== confirmPassword) { toast.error("Passwords do not match."); return; }
+    setPasswordError(null);
+    if (!newPassword || newPassword.length < 6) { setPasswordError("Password must be at least 6 characters."); return; }
+    if (newPassword !== confirmPassword) { setPasswordError("Passwords do not match."); return; }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/reset-password", {
@@ -78,10 +80,10 @@ export default function ForgotPassword() {
         body: JSON.stringify({ email: email.trim().toLowerCase(), otp, newPassword }),
       });
       const data = await res.json();
-      if (!res.ok) { toast.error(data.error ?? "Failed to reset password."); return; }
+      if (!res.ok) { setPasswordError(data.error ?? "Failed to reset password."); return; }
       setStep("done");
     } catch {
-      toast.error("Network error. Please try again.");
+      setPasswordError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -201,6 +203,12 @@ export default function ForgotPassword() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                {passwordError && (
+                  <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive animate-in fade-in">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    {passwordError}
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="newPassword">New password</Label>
                   <div className="relative">

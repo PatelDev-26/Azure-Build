@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Eye, EyeOff, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { AlertCircle, Camera, Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function Login() {
   const { login, user } = useAuth();
@@ -15,6 +14,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (user) {
     setLocation("/");
@@ -23,8 +23,9 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (!username.trim() || !password) {
-      toast.error("Please enter your username and password.");
+      setError("Please enter your username and password.");
       return;
     }
     setLoading(true);
@@ -37,14 +38,13 @@ export default function Login() {
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error ?? "Login failed.");
+        setError(data.error ?? "Invalid username or password.");
         return;
       }
       login(data);
-      toast.success(`Welcome back, ${data.displayName}!`);
       setLocation("/");
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -64,12 +64,18 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive animate-in fade-in">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => { setUsername(e.target.value); setError(null); }}
                 placeholder="your_username"
                 autoComplete="username"
                 className="bg-background/50"
@@ -88,7 +94,7 @@ export default function Login() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); setError(null); }}
                   placeholder="••••••••"
                   autoComplete="current-password"
                   className="bg-background/50 pr-10"
