@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, Loader2, Mail, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, Loader2, Mail, ShieldCheck, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 type Step = "email" | "otp" | "password" | "done";
@@ -14,6 +14,7 @@ export default function ForgotPassword() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
+  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -32,7 +33,11 @@ export default function ForgotPassword() {
       });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error ?? "Something went wrong."); return; }
-      toast.success("If that email is registered, a 6-digit code has been sent.");
+      // Dev fallback: if SMTP not configured, API returns the OTP directly
+      if (data.devOtp) {
+        setDevOtp(data.devOtp);
+        setOtp(data.devOtp);
+      }
       setStep("otp");
     } catch {
       toast.error("Network error. Please try again.");
@@ -134,10 +139,24 @@ export default function ForgotPassword() {
               </div>
               <CardTitle className="text-2xl font-serif font-normal text-primary">Enter reset code</CardTitle>
               <CardDescription>
-                We sent a 6-digit code to <span className="text-foreground font-medium">{email}</span>. Check your inbox (and spam folder).
+                {devOtp
+                  ? "Email is not yet configured. Your OTP is shown below — use it to continue."
+                  : <>We sent a 6-digit code to <span className="text-foreground font-medium">{email}</span>. Check your inbox (and spam folder).</>}
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {devOtp && (
+                <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-300">Development mode — email not configured</p>
+                    <p className="text-xs text-amber-400/80 mt-0.5">
+                      Your OTP is <span className="font-mono font-bold tracking-widest text-amber-300">{devOtp}</span> (auto-filled below).
+                      To enable real emails, set <code className="text-xs">SMTP_USER</code> and <code className="text-xs">SMTP_PASS</code> in your secrets.
+                    </p>
+                  </div>
+                </div>
+              )}
               <form onSubmit={handleOtpSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="otp">6-digit code</Label>

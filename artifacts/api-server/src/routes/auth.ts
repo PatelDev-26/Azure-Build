@@ -175,14 +175,22 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     .set({ otpCode: otp, otpExpiresAt: expiresAt })
     .where(eq(usersTable.id, user.id));
 
-  try {
-    await sendOtpEmail(parsed.data.email, otp);
-  } catch (err) {
-    req.log.error({ err }, "Failed to send OTP email");
+  const emailResult = await sendOtpEmail(parsed.data.email, otp);
+
+  req.log.info({ userId: user.id, otpSent: emailResult.sent }, "OTP generated");
+
+  // When SMTP is not configured, include the OTP in the response so the app
+  // can display it as a dev fallback (remove this in production).
+  if (!emailResult.sent && emailResult.devOtp) {
+    res.json({
+      ok: true,
+      message: "Email not configured — OTP shown below for development.",
+      devOtp: emailResult.devOtp,
+    });
+    return;
   }
 
-  req.log.info({ userId: user.id, otp }, "OTP generated (also shown here for dev fallback)");
-  res.json({ ok: true, message: "If this email exists, an OTP has been sent." });
+  res.json({ ok: true, message: "A 6-digit code has been sent to your email." });
 });
 
 router.post("/auth/verify-otp", async (req, res): Promise<void> => {
