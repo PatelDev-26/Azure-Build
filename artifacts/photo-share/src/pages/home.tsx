@@ -12,14 +12,6 @@ export default function Home() {
 
   return (
     <div className="space-y-12 pb-12">
-      {/* Stats Bar */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={<ImageIcon />} label="Images" value={stats?.totalImages} loading={isStatsLoading} />
-        <StatCard icon={<Users />} label="Creators" value={stats?.totalUsers} loading={isStatsLoading} />
-        <StatCard icon={<MessageSquare />} label="Comments" value={stats?.totalComments} loading={isStatsLoading} />
-        <StatCard icon={<Star />} label="Ratings" value={stats?.totalRatings} loading={isStatsLoading} />
-      </section>
-
       {/* Trending Section */}
       {(!isTrendingLoading && trendingData?.images && trendingData.images.length > 0) && (
         <section className="space-y-4">
@@ -27,7 +19,7 @@ export default function Home() {
             <TrendingUp className="w-5 h-5" />
             <h2 className="font-serif text-2xl font-medium">Trending Gallery</h2>
           </div>
-          
+
           <ScrollArea className="w-full whitespace-nowrap rounded-md">
             <div className="flex w-max space-x-4 p-1 pb-4">
               {trendingData.images.map((image) => (
@@ -42,7 +34,7 @@ export default function Home() {
       )}
 
       {/* Main Feed */}
-      <section className="space-y-6 mt-8">
+      <section className="space-y-6">
         <div className="flex items-center justify-between border-b border-border/40 pb-2">
           <div className="flex items-center gap-2">
             <Camera className="w-5 h-5 text-muted-foreground" />
@@ -71,6 +63,19 @@ export default function Home() {
             <p className="text-muted-foreground">Be the first to share a moment.</p>
           </div>
         )}
+      </section>
+
+      {/* Stats Bar */}
+      <section className="space-y-4">
+        <div className="border-b border-border/40 pb-2">
+          <h2 className="font-serif text-2xl font-medium text-foreground/70">Gallery at a Glance</h2>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard icon={<ImageIcon />} label="Images" value={stats?.totalImages} loading={isStatsLoading} />
+          <StatCard icon={<Users />} label="Creators" value={stats?.totalUsers} loading={isStatsLoading} />
+          <StatCard icon={<MessageSquare />} label="Comments" value={stats?.totalComments} loading={isStatsLoading} />
+          <StatCard icon={<Star />} label="Ratings" value={stats?.totalRatings} loading={isStatsLoading} />
+        </div>
       </section>
     </div>
   );
