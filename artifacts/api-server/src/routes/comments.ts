@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, commentsTable, usersTable } from "@workspace/db";
 import {
   CreateCommentBody,
@@ -9,14 +9,19 @@ import {
 
 const router: IRouter = Router();
 
+// ✅ Create comment
 router.post("/comments", async (req, res): Promise<void> => {
   const parsed = CreateCommentBody.safeParse(req.body);
+
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
 
-  const [comment] = await db.insert(commentsTable).values(parsed.data).returning();
+  const [comment] = await db
+    .insert(commentsTable)
+    .values(parsed.data)
+    .returning();
 
   const [user] = await db
     .select()
@@ -35,49 +40,61 @@ router.post("/comments", async (req, res): Promise<void> => {
   });
 });
 
+// ✅ Get comments for an image
 router.get("/comments/:imageId", async (req, res): Promise<void> => {
-  const raw = Array.isArray(req.params.imageId) ? req.params.imageId[0] : req.params.imageId;
-  const params = GetCommentsParams.safeParse({ imageId: parseInt(raw, 10) });
+  const raw = Array.isArray(req.params.imageId)
+    ? req.params.imageId[0]
+    : req.params.imageId;
+
+  const params = GetCommentsParams.safeParse({
+    imageId: parseInt(raw, 10),
+  });
+
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
 
+  // ✅ Fetch comments
   const comments = await db
     .select()
     .from(commentsTable)
     .where(eq(commentsTable.imageId, params.data.imageId))
     .orderBy(commentsTable.createdAt);
 
+  // ✅ Get unique user IDs
   const userIds = [...new Set(comments.map((c) => c.userId))];
-  const users = userIds.length > 0
-    ? await db.select().from(usersTable).where(
-        db.$count(usersTable.id) > 0
-          ? eq(usersTable.id, userIds[0])
-          : eq(usersTable.id, 0)
-      )
-    : [];
 
-  const usersById: Record<number, typeof users[0]> = {};
+  // ✅ Fetch users in one query (FIXED)
+  const users =
+    userIds.length > 0
+      ? await db
+          .select()
+          .from(usersTable)
+          .where(inArray(usersTable.id, userIds))
+      : [];
+
+  // ✅ Map users by ID
+  const usersById: Record<number, (typeof users)[number]> = {};
   for (const u of users) {
     usersById[u.id] = u;
   }
 
-  const result = await Promise.all(
-    comments.map(async (c) => {
-      const [u] = await db.select().from(usersTable).where(eq(usersTable.id, c.userId));
-      return {
-        id: c.id,
-        imageId: c.imageId,
-        userId: c.userId,
-        username: u?.username ?? "unknown",
-        displayName: u?.displayName ?? "Unknown",
-        avatarUrl: u?.avatarUrl ?? null,
-        text: c.text,
-        createdAt: c.createdAt.toISOString(),
-      };
-    })
-  );
+  // ✅ Build response (NO extra DB calls)
+  const result = comments.map((c) => {
+    const u = usersById[c.userId];
+
+    return {
+      id: c.id,
+      imageId: c.imageId,
+      userId: c.userId,
+      username: u?.username ?? "unknown",
+      displayName: u?.displayName ?? "Unknown",
+      avatarUrl: u?.avatarUrl ?? null,
+      text: c.text,
+      createdAt: c.createdAt.toISOString(),
+    };
+  });
 
   res.json(GetCommentsResponse.parse(result));
 });
